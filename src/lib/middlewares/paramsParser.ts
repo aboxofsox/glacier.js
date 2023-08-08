@@ -7,26 +7,16 @@ function paramsParser(routingTable: RoutingTable, pathname: string) {
 		const staticParts = staticRoute.split("/").filter(Boolean);
 		const dynamicParts = pathname.split("/").filter(Boolean);
 
-		if (staticParts.length !== dynamicParts.length) continue;
+		if (staticParts.length !== dynamicParts.length) return params;
 
-		let isMatch = true;
-
-		for (let i = 0; i < staticParts.length; i++) {
-			const staticPart = staticParts[i];
+		for (const [i, staticPart] of staticParts.entries()) {
 			const dynamicPart = dynamicParts[i];
 
-			if (staticPart === dynamicPart) continue;
-
 			if (staticPart.startsWith("[") && staticPart.endsWith("]")) {
-				const paramName = staticPart.slice(1, -1);
+				const paramName = staticPart.replace(/[[\]]/g, "");
 				params[paramName] = dynamicPart;
-			} else {
-				isMatch = false;
-				break;
 			}
 		}
-
-		if (isMatch) return params;
 	}
 
 	return params;

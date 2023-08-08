@@ -3,6 +3,7 @@ import { readdir, stat } from "node:fs/promises";
 import { FStat, RouteHandler, RoutingTable } from "../../types.js";
 import { pathToFileURL } from "node:url";
 import { defaultResponses } from "../response/index.js";
+
 const { platform } = process;
 const locale = path[platform === "win32" ? "win32" : "posix"];
 
@@ -39,27 +40,38 @@ async function buildRoutingTable(dir: string) {
 		const routeFiles = await traverseDir(dir);
 
 		for (const filePath of routeFiles) {
-			let localePath = filePath.split(path.sep).join(locale.sep);
+			// let localePath = filePath.split(path.sep).join(locale.sep);
+			let localePath = filePath.replace(path.sep, locale.sep);
 			const esModule: Partial<RoutingTable[number]> = await import(
 				pathToFileURL(localePath).toString()
 			);
 
-			localePath = localePath
-				.replace(".js", "")
-				.replace("index", "")
-				.replaceAll("\\", "/")
-				.replace(dir, "");
+			localePath = localePath.replace(".js", "");
+			localePath = localePath.replace("index", "");
+			localePath = localePath.replace(/\\/g, "/");
+
+			if (localePath.startsWith(dir))
+				localePath = localePath.substring(dir.length);
+
+			localePath = localePath.replace(/^\/+|\/+$/g, "");
 
 			if (localePath !== "/" && localePath.endsWith("/")) {
 				localePath = localePath.slice(0, localePath.length - 1);
 			}
 
-			if (!esModule.handler) throw new Error("Expected a main 'handler' function.");
-			if (!table[localePath]) table[localePath] = {} as RoutingTable[number];
+			if (!esModule.handler) 
+				throw new Error("Expected a main 'handler' function.");
 
-			if (esModule.before) table[localePath].before = esModule.before;
+			if (!table[localePath]) 
+				table[localePath] = {} as RoutingTable[number];
+
+			if (esModule.before) 
+				table[localePath].before = esModule.before;
+
 			table[localePath].handler = esModule.handler;
-			if (esModule.after) table[localePath].after = esModule.after;
+
+			if (esModule.after)
+				 table[localePath].after = esModule.after;
 		}
 
 		table["*"] = {
@@ -68,7 +80,7 @@ async function buildRoutingTable(dir: string) {
 
 		return table;
 	} catch (err: unknown) {
-		console.log(err);
+		console.error(err);
 		process.exit(1);
 	}
 }
